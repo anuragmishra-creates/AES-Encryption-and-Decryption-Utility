@@ -4,7 +4,8 @@
 - For decrypting purpose kindly only use the hexadecimal format obtained from encryption. This is because of the limitation of the terminal that caused issue with the newline (\n or ASCII 10) being read as the end of the to be decrypted (encrypted) string.
 
 ## Author
-- **Anurag Mishra (anuragmishra-creates)**  
+- **Anurag Mishra (anuragmishra-creates)**
+- **Ayush Gautam (Zman00089)** 
 
 ## Motivation
 Encryption is crucial in today's digital age, where information security is paramount. AES is one of the widely used encryption algorithms, alongside SHA, RSA, ECC, etc. Our project explores AES encryption due to its significance in securing sensitive data in industries like healthcare, finance, and government. Applications include:
