@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 
 int keySizeInBits = 128;
 bool debugMode = false;
@@ -323,43 +324,42 @@ void inverseMixColumns(uint8_t state[4][4])
     }
 }
 
-// For Encryption/Decryption: XORing the state with the current roundKey
-void addRoundKey(uint8_t stateMatrices[4][4], uint8_t roundKey[4][4])
+void XORBintoA(uint8_t A[4][4], uint8_t B[4][4])
 {
     for (int col = 0; col < 4; col++)
     {
         for (int row = 0; row < 4; row++)
         {
-            stateMatrices[row][col] ^= roundKey[row][col];
+            A[row][col] ^= B[row][col];
         }
     }
 }
 
+// For Encryption/Decryption: XORing the state with the current roundKey
+void addRoundKey(uint8_t stateMatrices[4][4], uint8_t roundKey[4][4])
+{
+    XORBintoA(stateMatrices, roundKey);
+}
+
 // For Encryption/Decryption: Generates the required number of 4x4 blocks from input string
-void blockGenerate(char txt[], int txtsize, uint8_t stateMatrices[][4][4], int totalStateMatrices)
+void blockGenerate(char txt[], int txtsize, uint8_t stateMatrices[][4][4], int totalBlocks, bool leaveBlock0)
 {
     int c = 0; // Index in txt
-    for (int block = 0; block < totalStateMatrices; block++)
+    for (int block = (int)leaveBlock0; block < totalBlocks; block++)
     {
-        for (int row = 0; row < 4; row++)
+        for (int i = 0; i < 16; i++)
         {
-            for (int col = 0; col < 4; col++)
-            {
-                if (c < txtsize)
-                    stateMatrices[block][row][col] = txt[c++];
-                else
-                    stateMatrices[block][row][col] = ' '; // Pad with space after txt ends
-            }
+            stateMatrices[block][i / 4][i % 4] = (c < txtsize) ? txt[c++] : ' ';
         }
     }
 }
 
 // For Decryption: Serializes the 4x4 blocks into a single string
-char *lineGenerate(uint8_t stateMatrices[][4][4], int totalStateMatrices)
+char *lineGenerate(uint8_t stateMatrices[][4][4], int totalBlocks, bool IVpresent)
 {
-    char *txt = (char *)malloc(totalStateMatrices * (16 * sizeof(char)) + 1);
+    char *txt = (char *)malloc(totalBlocks * (16 * sizeof(char)) + 1);
     int c = 0; // Index in txt
-    for (int block = 0; block < totalStateMatrices; block++)
+    for (int block = (int)IVpresent; block < totalBlocks; block++)
     {
         for (int row = 0; row < 4; row++)
         {
@@ -402,9 +402,9 @@ void charStringToHexString(char txt[], uint8_t hexstr[], int hexstrsize)
 }
 
 // Prints the individual blocks obtained before/after encryption/decryption
-void printBlocks(uint8_t stateMatrices[][4][4], int totalStateMatrices, bool charFormat)
+void printBlocks(uint8_t stateMatrices[][4][4], int totalBlocks, bool charFormat)
 {
-    for (int block = 0; block < totalStateMatrices; block++)
+    for (int block = 0; block < totalBlocks; block++)
     {
         printf("\n====== BLOCK %d ======\n", block);
         for (int row = 0; row < 4; row++)
@@ -424,119 +424,168 @@ void printBlocks(uint8_t stateMatrices[][4][4], int totalStateMatrices, bool cha
 
 // For decryption : function recieves the encrypted text and applies all inverse functions in right order
 //                  to decrypt the text given by the user
-void decryptAES(char *txt, uint8_t roundKeys[15][4][4])
+void decryptAES(char *txt, uint8_t roundKeys[15][4][4], int modeOfOperationIndex)
 {
+    bool IVpresent = (modeOfOperationIndex == 2 || modeOfOperationIndex == 3);
     int keySizeInBytes = keySizeInBits / 8;
     int Nk = keySizeInBytes / 4; // Number of words in the cipher key
     int totalRounds = Nk + 6;    // AES standard: Rounds = Nk + 6
 
     int size = strlen(txt) / 2;
-    int totalStateMatrices = (size + 15) / 16; // Basically, ceil(size/16.0);
-    uint8_t stateMatrices[totalStateMatrices][4][4];
+    int totalBlocks = (size + 15) / 16;          // Basically, ceil(size/16.0);
+    uint8_t cipherTextBlocks[totalBlocks][4][4]; // Static
+    uint8_t plainTextBlocks[totalBlocks][4][4];  // Dynamic: The name refers to the final state it will reach
 
     uint8_t hexstr[size + 1]; // Extra size for NULL character
     charStringToHexString(txt, hexstr, size);
 
     // Breaking the text content to blocks each of size 4x4
-    blockGenerate(hexstr, size, stateMatrices, totalStateMatrices);
+    blockGenerate(hexstr, size, cipherTextBlocks, totalBlocks, false);
+    blockGenerate(hexstr, size, plainTextBlocks, totalBlocks, false);
 
-    // Printing the stateMatrices containing the text before decryption
+    // If required in the current mode of operation, storing 0 matrix at plainTextBlocks[0]=0
+    if (IVpresent)
+    {
+        srand((unsigned int)time(NULL));
+        for (int row = 0; row < 4; row++)
+        {
+            for (int col = 0; col < 4; col++)
+                plainTextBlocks[0][row][col] = 0;
+        }
+    }
+
+    // Printing the cipherTextBlocks containing the text before decryption
     if (debugMode)
     {
         printf("\n======INDIVIDUAL BLOCKS (DIRECTLY FROM ENCRYPTED DATA)======\n");
-        printBlocks(stateMatrices, totalStateMatrices, false);
+        printBlocks(cipherTextBlocks, totalBlocks, false);
     }
 
     // Decryption process starts here
-    for (int block = 0; block < totalStateMatrices; block++)
+    for (int block = (int)IVpresent; block < totalBlocks; block++)
     {
         // Pre-round Transformation (or totalRounds-th round)
-        addRoundKey(stateMatrices[block], roundKeys[totalRounds]);
+        addRoundKey(plainTextBlocks[block], roundKeys[totalRounds]);
 
         // (totalRounds-1)'th round, ..., 1st round
         for (int round = totalRounds - 1; round >= 1; round--)
         {
-            inverseShiftRows(stateMatrices[block]);
-            inverseSubBytes(stateMatrices[block]);
-            addRoundKey(stateMatrices[block], roundKeys[round]);
-            inverseMixColumns(stateMatrices[block]);
+            inverseShiftRows(plainTextBlocks[block]);
+            inverseSubBytes(plainTextBlocks[block]);
+            addRoundKey(plainTextBlocks[block], roundKeys[round]);
+            inverseMixColumns(plainTextBlocks[block]);
         }
 
         // 0th round
-        inverseShiftRows(stateMatrices[block]);
-        inverseSubBytes(stateMatrices[block]);
-        addRoundKey(stateMatrices[block], roundKeys[0]);
+        inverseShiftRows(plainTextBlocks[block]);
+        inverseSubBytes(plainTextBlocks[block]);
+        addRoundKey(plainTextBlocks[block], roundKeys[0]);
+
+        // MODE OF OPERATION:
+        if (modeOfOperationIndex == 2) // CBC: P[i]=P[i]^C[i-1]
+            XORBintoA(plainTextBlocks[block], cipherTextBlocks[block - 1]);
+        else if (modeOfOperationIndex == 3) // PCBC: P[i]=P[i]^C[i-1]^P[i-1]
+        {
+            XORBintoA(plainTextBlocks[block], cipherTextBlocks[block - 1]);
+            XORBintoA(plainTextBlocks[block], plainTextBlocks[block - 1]);
+        }
     }
 
-    // Printing the stateMatrices containing the decrypted text
+    // Printing the plainTextBlocks containing the decrypted text
     if (debugMode)
     {
         printf("\n======INDIVIDUAL DECRYPTED BLOCKS (AFTER DECRYPTION)======\n");
-        printBlocks(stateMatrices, totalStateMatrices, true);
+        printBlocks(plainTextBlocks, totalBlocks, true);
     }
 
     printSeparator();
-    printf("  >>>>> FINAL DECRYPTED DATA <<<<<\n%s\n", lineGenerate(stateMatrices, totalStateMatrices));
+    printf("  >>>>> FINAL DECRYPTED DATA <<<<<\n%s\n", lineGenerate(plainTextBlocks, totalBlocks, IVpresent));
 }
 
 // For Encryption : The function recieves the text and applies all encryption functions in
 //                  the right order to encrypt the text given by the user
-void encryptAES(char *txt, uint8_t roundKeys[15][4][4])
+void encryptAES(char *txt, uint8_t roundKeys[15][4][4], int modeOfOperationIndex)
 {
+    bool IVpresent = (modeOfOperationIndex == 2 || modeOfOperationIndex == 3);
     int keySizeInBytes = keySizeInBits / 8;
     int Nk = keySizeInBytes / 4; // Number of words in the cipher key
     int totalRounds = Nk + 6;    // AES standard: Rounds = Nk + 6
 
     int size = strlen(txt);
-    int totalStateMatrices = (size + 15) / 16; // Basically, ceil(size/16.0);
-    uint8_t stateMatrices[totalStateMatrices][4][4];
+    int totalBlocks = (size + 15) / 16; // Basically, ceil(size/16.0);
+    if (IVpresent)                      // Extra space for IV
+        totalBlocks++;
+    uint8_t cipherTextBlocks[totalBlocks][4][4]; // Dynamic: The name refers to the final state it will reach
+    uint8_t plainTextBlocks[totalBlocks][4][4];  // Static
+
+    // If required in the current mode of operation, generating IV and storing at cipherTextBlocks[0]
+    // and storing 0 matrix at plainTextBlocks[0]=0
+    if (IVpresent)
+    {
+        srand((unsigned int)time(NULL));
+        for (int row = 0; row < 4; row++)
+        {
+            for (int col = 0; col < 4; col++)
+                cipherTextBlocks[0][row][col] = rand() % 256, plainTextBlocks[0][row][col] = 0;
+        }
+    }
 
     // Breaking the text content to blocks each of size 4x4
-    blockGenerate(txt, size, stateMatrices, totalStateMatrices);
+    blockGenerate(txt, size, plainTextBlocks, totalBlocks, IVpresent);  // plainTextBlocks[0]=0 matrix (if IV is used)
+    blockGenerate(txt, size, cipherTextBlocks, totalBlocks, IVpresent); // cipherTextBlocks[0]=IV matrix (if IV is used)
 
-    // Printing the stateMatrices containing the text before encryption
+    // Printing the cipherTextBlocks containing the text before encryption
     if (debugMode)
     {
         printf("\n======INDIVIDUAL BLOCKS (DIRECTLY FROM TO BE ENCRYPTED DATA)======\n");
-        printBlocks(stateMatrices, totalStateMatrices, true);
+        printBlocks(cipherTextBlocks, totalBlocks, true);
     }
 
     // Encryption process starts here
-    for (int block = 0; block < totalStateMatrices; block++)
+    for (int block = (int)IVpresent; block < totalBlocks; block++)
     {
+        // MODE OF OPERATION:
+        if (modeOfOperationIndex == 2) // CBC: P[i]=P[i]^C[i-1]
+            XORBintoA(cipherTextBlocks[block], cipherTextBlocks[block - 1]);
+        else if (modeOfOperationIndex == 3) // PCBC: P[i]=P[i]^C[i-1]^P[i-1]
+        {
+            XORBintoA(cipherTextBlocks[block], cipherTextBlocks[block - 1]);
+            XORBintoA(cipherTextBlocks[block], plainTextBlocks[block - 1]);
+        }
+
         // Pre-round Transformation (or 0th round):
-        addRoundKey(stateMatrices[block], roundKeys[0]);
+        addRoundKey(cipherTextBlocks[block], roundKeys[0]);
 
         // 1st, 2nd, ..., (totalRounds - 1)th round
         for (int round = 1; round <= totalRounds - 1; round++)
         {
-            subBytes(stateMatrices[block]);
-            shiftRows(stateMatrices[block]);
-            mixColumns(stateMatrices[block]);
-            addRoundKey(stateMatrices[block], roundKeys[round]);
+            subBytes(cipherTextBlocks[block]);
+            shiftRows(cipherTextBlocks[block]);
+            mixColumns(cipherTextBlocks[block]);
+            addRoundKey(cipherTextBlocks[block], roundKeys[round]);
         }
 
         // totalRounds-th round (no MixColumns)
-        subBytes(stateMatrices[block]);
-        shiftRows(stateMatrices[block]);
-        addRoundKey(stateMatrices[block], roundKeys[totalRounds]);
+        subBytes(cipherTextBlocks[block]);
+        shiftRows(cipherTextBlocks[block]);
+        addRoundKey(cipherTextBlocks[block], roundKeys[totalRounds]);
     }
 
-    // Printing the stateMatrices containing the encrypted text
+    // Printing the cipherTextBlocks containing the encrypted text
     if (debugMode)
     {
         printf("\n======INDIVIDUAL ENCRYPTED BLOCKS (AFTER ENCRYPTION)======\n");
-        printBlocks(stateMatrices, totalStateMatrices, false);
+        printBlocks(cipherTextBlocks, totalBlocks, false);
     }
 
     printSeparator();
     printf("  >>>>> FINAL ENCRYPTED DATA <<<<<\n");
-    for (int block = 0; block < totalStateMatrices; block++)
+    for (int block = 0; block < totalBlocks; block++)
     {
         for (int row = 0; row < 4; row++)
         {
             for (int col = 0; col < 4; col++)
-                printf("%02X", stateMatrices[block][row][col]);
+                printf("%02X", cipherTextBlocks[block][row][col]);
         }
     }
     printf("\n");
@@ -634,6 +683,8 @@ int main()
     uint8_t roundKeys[15][4][4]; // Stores the 15 4x4 round keys
     char cipherKey[33] = "abcdefghijklmnop";
     uint8_t cipherKeyBlock[4][8];
+    int modeOfOperationIndex = 1;
+    char modeOfOperation[4] = "ECB";
 
     for (int row = 0, c = 0; row < 4; row++)
     {
@@ -653,13 +704,15 @@ int main()
         printf("  AES Encryption & Decryption Utility (by anuragmishra-creates)\n");
         printf("  [ AES-%d bit ]\n", keySizeInBits);
         printf("  [ Current Cipher Key: %s ]\n", cipherKey);
+        printf("  [ Current Mode of Operation: %s ]\n", modeOfOperation);
         printSeparator();
         printf("  What do you want to do?\n");
         printf("  [1] Encrypt a Message\n");
         printf("  [2] Decrypt a Message\n");
         printf("  [3] Change the Cipher Key\n");
-        printf("  [4] %s Debug Mode\n", debugMode ? "Disable" : "Enable");
-        printf("  [5] Exit Program\n");
+        printf("  [4] Change the Mode of Operation\n");
+        printf("  [5] %s Debug Mode\n", debugMode ? "Disable" : "Enable");
+        printf("  [6] Exit Program\n");
         printf("\n  Your choice: ");
         scanf("%d", &option);
 
@@ -671,7 +724,7 @@ int main()
             printSeparator();
             str = inputString();
 
-            encryptAES(str, roundKeys);
+            encryptAES(str, roundKeys, modeOfOperationIndex);
             free(str);
             break;
 
@@ -681,7 +734,7 @@ int main()
             printSeparator();
             txt = inputString();
 
-            decryptAES(txt, roundKeys);
+            decryptAES(txt, roundKeys, modeOfOperationIndex);
             free(txt);
             break;
 
@@ -691,7 +744,7 @@ int main()
             printf("  [128] 128 bit (or 16 bytes)\n");
             printf("  [192] 192 bit (or 24 bytes)\n");
             printf("  [256] 256 bit (or 32 bytes)\n");
-            printf("  [Default] Proceed without change in the Cipher Key size:\n");
+            printf("  [Default] Proceed without change in the Cipher Key size\n");
             printf("\n  Your choice: ");
             scanf("%d", &option2);
             printSeparator();
@@ -726,13 +779,36 @@ int main()
             keySchedule(roundKeys, cipherKeyBlock);
             break;
 
-        case 4: // TOGGLE DEBUG MODE
+        case 4: // MODE OF OPERATION CHANGE
+            printSeparator();
+            printf("  Choose the AES Mode of Operation:\n");
+            printf("  [1] ECB:  Electronic Code Book\n");
+            printf("  [2] CBC:  Cipher Block Chaining\n");
+            printf("  [3] PCBC: Propagating Cipher Block Chaining\n");
+            printf("  [Default] Proceed without change in the Mode of Operation\n");
+            printf("\n  Your choice: ");
+            scanf("%d", &option2);
+            printSeparator();
+            if (option2 == 1 || option2 == 2 || option2 == 3)
+            {
+                modeOfOperationIndex = option2;
+                if (modeOfOperationIndex == 1)
+                    strcpy(modeOfOperation, "ECB");
+                else if (modeOfOperationIndex == 2)
+                    strcpy(modeOfOperation, "CBC");
+                else if (modeOfOperationIndex == 3)
+                    strcpy(modeOfOperation, "PCBC");
+            }
+            clearBuffer();
+            break;
+
+        case 5: // TOGGLE DEBUG MODE
             printSeparator();
             debugMode = !debugMode;
             printf("  [ Debugging mode has been %s! ]", debugMode ? "enabled" : "disabled");
             break;
 
-        case 5: // EXIT
+        case 6: // EXIT
             printSeparator();
             printf("  The program has been successfully terminated.\n");
             printSeparator();
@@ -742,7 +818,7 @@ int main()
             printf("  Invalid input! Try again.\n");
         }
 
-    } while (option != 5);
+    } while (option != 6);
 
     return 0;
 }
