@@ -19,7 +19,7 @@ This is a command-line utility for performing AES (Advanced Encryption Standard)
 
 ## Diagrams:
 ![AES Steps](./media/Steps.png)
-![Modes of operations](./media/ModesOfOperations.png)
+![Modes of operations](./media/ModesOfOperations.svg)
 
 ## Project Structure
 ```text
