@@ -11,6 +11,20 @@
 #include "include/AESDecryption.h"
 #include "include/AESGlobals.h"
 
+// ANSI Escape Codes for Colors
+#define RESET "\033[0m"
+#define RED "\033[91m"
+#define GREEN "\033[92m"
+#define YELLOW "\033[93m"
+#define BLUE "\033[94m"
+#define MAGENTA "\033[95m"
+#define CYAN "\033[96m"
+#define WHITE "\033[97m"
+#define BOLD "\033[1m"
+
+// Unique color for numbers
+#define NUM_COLOR CYAN
+
 int main()
 {
     uint8_t roundKeys[15][4][4]; // Stores the 15 4x4 round keys
@@ -34,18 +48,18 @@ int main()
         // Printing the Main Menu:
         printf("\n");
         printSeparator();
-        printf("  AES Encryption & Decryption Utility (by anuragmishra-creates)\n");
-        printf("  [ AES-%d bit ]\n", keySizeInBits);
-        printf("  [ Current Cipher Key: %s ]\n", cipherKey);
-        printf("  [ Current Mode of Operation: %s ]\n", modeOfOperation);
+        printf(BOLD RED "  AES Encryption & Decryption Utility (by anuragmishra-creates)\n" RESET);
+        printf(BOLD YELLOW "  [ AES-%d bit ]\n" RESET, keySizeInBits);
+        printf(BOLD YELLOW "  [ Current Cipher Key: %s ]\n" RESET, cipherKey);
+        printf(BOLD YELLOW "  [ Current Mode of Operation: %s ]\n" RESET, modeOfOperation);
         printSeparator();
-        printf("  What do you want to do?\n");
-        printf("  [1] Encrypt a Message\n");
-        printf("  [2] Decrypt a Message\n");
-        printf("  [3] Change the Cipher Key\n");
-        printf("  [4] Change the Mode of Operation\n");
-        printf("  [5] %s Debug Mode\n", debugMode ? "Disable" : "Enable");
-        printf("  [6] Exit Program\n");
+        printf(GREEN "  What do you want to do?\n" RESET);
+        printf("  " NUM_COLOR "[1]" RESET GREEN " Encrypt a Message\n" RESET);
+        printf("  " NUM_COLOR "[2]" RESET GREEN " Decrypt a Message\n" RESET);
+        printf("  " NUM_COLOR "[3]" RESET GREEN " Change the Cipher Key\n" RESET);
+        printf("  " NUM_COLOR "[4]" RESET GREEN " Change the Mode of Operation\n" RESET);
+        printf("  " NUM_COLOR "[5]" RESET GREEN " %s Debug Mode\n" RESET, debugMode ? "Disable" : "Enable");
+        printf("  " NUM_COLOR "[6]" RESET GREEN " Exit Program\n" RESET);
         printf("\n  Your choice: ");
         scanf("%d", &option);
 
@@ -53,7 +67,7 @@ int main()
         {
         case 1: // ENCRYPTION
             printSeparator();
-            printf("  ENCRYPTION mode activated\n");
+            printf(BOLD RED "  ENCRYPTION mode activated\n" RESET);
             printSeparator();
             str = inputString();
 
@@ -63,7 +77,7 @@ int main()
 
         case 2: // DECRYPTION
             printSeparator();
-            printf("  DECRYPTION mode activated\n");
+            printf(BOLD RED "  DECRYPTION mode activated\n" RESET);
             printSeparator();
             txt = inputString();
 
@@ -73,18 +87,18 @@ int main()
 
         case 3: // CIPHER KEY CHANGE
             printSeparator();
-            printf("  Choose the AES Cipher Key size (in bits):\n");
-            printf("  [128] 128 bit (or 16 bytes)\n");
-            printf("  [192] 192 bit (or 24 bytes)\n");
-            printf("  [256] 256 bit (or 32 bytes)\n");
-            printf("  [Default] Proceed without change in the Cipher Key size\n");
+            printf(MAGENTA "  Choose the AES Cipher Key size (in bits):\n" RESET);
+            printf("  " NUM_COLOR "[128]" RESET MAGENTA " 128 bit (or 16 bytes)\n" RESET);
+            printf("  " NUM_COLOR "[192]" RESET MAGENTA " 192 bit (or 24 bytes)\n" RESET);
+            printf("  " NUM_COLOR "[256]" RESET MAGENTA " 256 bit (or 32 bytes)\n" RESET);
+            printf("  " NUM_COLOR "[Default]" RESET MAGENTA " Proceed without change in the Cipher Key size\n" RESET);
             printf("\n  Your choice: ");
             scanf("%d", &option2);
             printSeparator();
             if (option2 == 128 || option2 == 192 || option2 == 256)
                 keySizeInBits = option2;
 
-            printf("  Enter the Cipher Key:\n");
+            printf(MAGENTA "  Enter the Cipher Key:\n" RESET);
             printf("  (Note: The key will be truncated if too long, or padded with '_' if too short)\n");
             clearBuffer();
             /*
@@ -114,11 +128,11 @@ int main()
 
         case 4: // MODE OF OPERATION CHANGE
             printSeparator();
-            printf("  Choose the AES Mode of Operation:\n");
-            printf("  [1] ECB:  Electronic Code Book\n");
-            printf("  [2] CBC:  Cipher Block Chaining\n");
-            printf("  [3] PCBC: Propagating Cipher Block Chaining\n");
-            printf("  [Default] Proceed without change in the Mode of Operation\n");
+            printf(RED "  Choose the AES Mode of Operation:\n" RESET);
+            printf("  " NUM_COLOR "[1]" RESET RED " ECB:  Electronic Code Book\n" RESET);
+            printf("  " NUM_COLOR "[2]" RESET RED " CBC:  Cipher Block Chaining\n" RESET);
+            printf("  " NUM_COLOR "[3]" RESET RED " PCBC: Propagating Cipher Block Chaining\n" RESET);
+            printf("  " NUM_COLOR "[Default]" RESET RED " Proceed without change in the Mode of Operation\n");
             printf("\n  Your choice: ");
             scanf("%d", &option2);
             printSeparator();
@@ -138,17 +152,18 @@ int main()
         case 5: // TOGGLE DEBUG MODE
             printSeparator();
             debugMode = !debugMode;
-            printf("  [ Debugging mode has been %s! ]", debugMode ? "enabled" : "disabled");
+            printf(CYAN "  [ Debugging mode has been %s! ]\n" RESET,
+                   debugMode ? "enabled" : "disabled");
             break;
 
         case 6: // EXIT
             printSeparator();
-            printf("  The program has been successfully terminated.\n");
+            printf(BOLD WHITE "  The program has been successfully terminated.\n" RESET);
             printSeparator();
             break;
 
         default:
-            printf("  Invalid input! Try again.\n");
+            printf(RED "  Invalid input! Try again.\n" RESET);
         }
 
     } while (option != 6);

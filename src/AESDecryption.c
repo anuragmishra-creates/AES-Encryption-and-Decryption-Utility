@@ -7,6 +7,16 @@
 #include <stdbool.h>
 #include <string.h>
 
+#define RESET "\033[0m"
+#define RED "\033[91m"
+#define GREEN "\033[92m"
+#define YELLOW "\033[93m"
+#define BLUE "\033[94m"
+#define MAGENTA "\033[95m"
+#define CYAN "\033[96m"
+#define WHITE "\033[97m"
+#define BOLD "\033[1m"
+
 // Decryption: Right Circular shifting of row'th indexed row 'row' times
 void inverseShiftRows(uint8_t array[4][4]) // A 4x4 array is received
 {
@@ -141,5 +151,6 @@ void decryptAES(char *txt, uint8_t roundKeys[15][4][4], int modeOfOperationIndex
     }
 
     printSeparator();
-    printf("  >>>>> FINAL DECRYPTED DATA <<<<<\n%s\n", lineGenerate(plainTextBlocks, totalBlocks, IVpresent));
+    printf(BOLD BLUE "  >>>>> FINAL DECRYPTED DATA <<<<<\n" RESET);
+    printf(BOLD WHITE "%s\n" RESET, lineGenerate(plainTextBlocks, totalBlocks, IVpresent));
 }

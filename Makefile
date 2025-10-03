@@ -13,7 +13,7 @@ SRCS += main.c
 OBJS = $(patsubst %.c, %.o, $(SRCS))
 
 # Define the name of the final executable
-TARGET = AESProgram
+TARGET = AESUtility
 
 .PHONY: all clean
 

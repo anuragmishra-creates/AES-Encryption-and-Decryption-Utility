@@ -3,9 +3,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+// ANSI Escape Codes for Colors
+#define RESET "\033[0m"
+#define RED "\033[91m"
+#define GREEN "\033[92m"
+#define YELLOW "\033[93m"
+#define BLUE "\033[94m"
+#define MAGENTA "\033[95m"
+#define CYAN "\033[96m"
+#define WHITE "\033[97m"
+#define BOLD "\033[1m"
+
 void printSeparator()
 {
-    printf("==========================================================================================================\n");
+    printf(BOLD WHITE "====================================================================================================================\n" RESET);
 }
 
 // To discard the newline (and any stray characters) left in the input buffer after scanf() so that the next input isn’t skipped.
@@ -159,6 +170,86 @@ void addRoundKey(uint8_t stateMatrices[4][4], uint8_t roundKey[4][4])
 // For getting string for encryption/decryption :
 char *inputString()
 {
+    int capacity = 65536; // initial capacity (64 KB)
+    char *str = malloc(capacity);
+    if (!str)
+    {
+        fprintf(stderr, "Error! Could NOT allocate memory!\n");
+        exit(EXIT_FAILURE);
+    }
+    str[0] = '\0'; // start with empty string
+
+    int option;
+    char fileName[256];
+    FILE *filePtr = NULL;
+
+    // Ask input method
+    do
+    {
+        printf(BOLD MAGENTA "Choose your preferred method:\n" RESET);
+        printf("  " CYAN "[1]" RESET MAGENTA " Enter the message manually (Ctrl+D to end)\n" RESET);
+        printf("  " CYAN "[2]" RESET MAGENTA " Import the message from a .txt file\n" RESET);
+        printf("\n  Your choice: ");
+        scanf("%d", &option);
+        printSeparator();
+        clearBuffer();
+
+    } while (option != 1 && option != 2);
+
+    // Select input source
+    if (option == 1)
+    {
+        printf(MAGENTA "  Enter your message (press Ctrl+D to finish):\n" RESET);
+        filePtr = stdin; // read from terminal
+    }
+    else
+    {
+        while (filePtr == NULL)
+        {
+            printf(MAGENTA "  Enter name of the file ending with .txt:\n" RESET);
+            printf(MAGENTA "FILE NAME:  " RESET);
+            scanf("%[^\n]", fileName);
+            clearBuffer();
+            filePtr = fopen(fileName, "r");
+            if (!filePtr)
+                printf(MAGENTA "  The file %s was NOT found! Try again.\n" RESET, fileName);
+        }
+    }
+
+    // Read until EOF
+    size_t len = 0;
+    char buffer[1024]; // temporary chunk
+    while (fgets(buffer, sizeof(buffer), filePtr))
+    {
+        size_t chunkLen = strlen(buffer);
+        if (len + chunkLen + 1 > capacity)
+        {
+            // grow buffer
+            capacity *= 2;
+            char *tmp = realloc(str, capacity);
+            if (!tmp)
+            {
+                fprintf(stderr, "Error! Could not reallocate memory!\n");
+                free(str);
+                exit(EXIT_FAILURE);
+            }
+            str = tmp;
+        }
+        strcpy(str + len, buffer);
+        len += chunkLen;
+    }
+
+    // Clear EOF flag so next scanf works fine
+    if (filePtr == stdin)
+        clearerr(stdin);
+    else
+        fclose(filePtr);
+
+    return str; // contains everything till EOF or Ctrl+D
+}
+
+/* char *inputString()
+{
     // Allocating the memory for the input:
     // Input string can be of size atmost 65,536 characters (64 KBs)
     int size = 65536 * sizeof(char);
@@ -241,4 +332,4 @@ char *inputString()
     if (tempPtr) // Only replace if realloc succeeded
         str = tempPtr;
     return str;
-}
+} */

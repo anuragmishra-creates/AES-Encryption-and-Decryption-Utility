@@ -9,6 +9,16 @@
 #include <time.h>
 #include <string.h>
 
+#define RESET "\033[0m"
+#define RED "\033[91m"
+#define GREEN "\033[92m"
+#define YELLOW "\033[93m"
+#define BLUE "\033[94m"
+#define MAGENTA "\033[95m"
+#define CYAN "\033[96m"
+#define WHITE "\033[97m"
+#define BOLD "\033[1m"
+
 // Encryption: Left Circular shifting of row'th indexed row 'row' times
 void shiftRows(uint8_t array[4][4]) // A 4x4 array is received
 {
@@ -145,13 +155,13 @@ void encryptAES(char *txt, uint8_t roundKeys[15][4][4], int modeOfOperationIndex
     }
 
     printSeparator();
-    printf("  >>>>> FINAL ENCRYPTED DATA <<<<<\n");
+    printf(BOLD BLUE "  >>>>> FINAL ENCRYPTED DATA <<<<<\n" RESET);
     for (int block = 0; block < totalBlocks; block++)
     {
         for (int row = 0; row < 4; row++)
         {
             for (int col = 0; col < 4; col++)
-                printf("%02X", cipherTextBlocks[block][row][col]);
+                printf(BOLD WHITE "%02X" RESET, cipherTextBlocks[block][row][col]);
         }
     }
     printf("\n");
