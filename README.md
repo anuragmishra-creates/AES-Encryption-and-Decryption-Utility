@@ -16,9 +16,38 @@ This is a command-line utility for performing AES (Advanced Encryption Standard)
 - **Debug Mode:** A toggleable debug mode provides detailed output of the encryption and decryption processes, showing the state of the blocks before and after each step.
 - **Colorful CLI:** The command-line interface features colorful menus and highlights for easy navigation and spotting of options.
 
+## Preview:
+
+### Starting
+![Starting](./media/Start.png)
+
+### Encryption
+#### 1
+![Encryption 1](./media/Encryption%201.png)
+#### 2
+![Encryption 2](./media/Encryption%202.png)
+
+### Decryption
+#### 1
+![Decryption 1](./media/Decryption%201.png)
+#### 2
+![Decryption 2](./media/Decryption%202.png)
+
+### Changing the Cipher Key and/or the AES Version
+![Cipher Key and AES Version](./media/Cipher%20Key.png)
+
+### Mode of Operation
+![Mode of Operation](./media/Mode%20of%20Operation.png)
+
+### Terminate
+![Terminate](./media/Terminate.png)
 
 ## Diagrams:
+
+### Overview
 ![AES Steps](./media/Steps.png)
+
+### Modes of operations
 ![Modes of operations](./media/ModesOfOperations.svg)
 
 ## Project Structure
